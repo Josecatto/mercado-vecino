@@ -6,7 +6,8 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD en .env}
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets: [db_password]
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
@@ -28,7 +29,8 @@ services:
       DB_HOST: db
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD en .env}
+      DB_PASSWORD_FILE: /run/secrets/db_password
+    secrets: [db_password]
     depends_on:
       db:
         condition: service_healthy
@@ -57,3 +59,7 @@ networks:
 
 volumes:
   pgdata:
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
