@@ -20,6 +20,24 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    command:
+      - sh
+      - -c
+      - 'exec redis-server --requirepass "$$(cat /run/secrets/redis_password)" --appendonly yes'
+    secrets: [redis_password]
+    volumes:
+      - redisdata:/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$(cat /run/secrets/redis_password)\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
   api:
     build:
       context: ./api
@@ -30,9 +48,13 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD_FILE: /run/secrets/db_password
-    secrets: [db_password]
+      REDIS_HOST: redis
+      REDIS_PASSWORD_FILE: /run/secrets/redis_password
+    secrets: [db_password, redis_password]
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks: [backend, frontend]
     read_only: true
@@ -57,9 +79,12 @@ networks:
   backend:
     internal: true
 
-volumes:
-  pgdata:
-
 secrets:
   db_password:
     file: ./secrets/db_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+
+volumes:
+  pgdata:
+  redisdata:
